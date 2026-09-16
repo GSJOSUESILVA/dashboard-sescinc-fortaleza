@@ -1,1 +1,398 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SESCINC SBFZ — Controle de Efetivo</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-dim: #94a3b8;
+      --accent: #ef4444;
+      --accent-blue: #38bdf8;
+      --accent-green: #22c55e;
+      --accent-yellow: #eab308;
+      --accent-purple: #c084fc;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+
+    aside {
+      width: 260px;
+      background: #020617;
+      border-right: 1px solid var(--border);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      padding-bottom: 1.2rem;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    .brand img { max-width: 140px; height: auto; }
+    .brand-title { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+    .brand-sub {
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      background: rgba(51, 65, 85, 0.4);
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+    }
+
+    nav { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
+    nav button {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-size: 0.9rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transition: 0.2s;
+    }
+    nav button:hover, nav button.active { background: var(--card-bg); color: var(--text); font-weight: 600; }
+
+    main { flex: 1; overflow-y: auto; padding: 2rem; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    
+    .file-input { display: none; }
+    .btn-upload {
+      background: var(--accent);
+      color: white;
+      padding: 0.65rem 1.3rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.1rem; }
+    .card-title { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; font-weight: 600; }
+    .card-val { font-size: 1.6rem; font-weight: 700; margin-top: 0.3rem; }
+    .card-val span { font-size: 0.8rem; font-weight: 400; color: var(--text-dim); margin-left: 0.2rem; }
+
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+    .chart-container { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; min-height: 300px; }
+    .chart-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem; }
+
+    /* Barra de Filtros */
+    .filter-bar { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
+    .filter-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-dim); }
+    .select-filter, .search-box {
+      background: #020617;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--text-dim); font-weight: 600; }
+    .badge { padding: 0.25rem 0.55rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+    .badge-bace { background: rgba(192, 132, 252, 0.2); color: var(--accent-purple); }
+    .badge-bamc { background: rgba(56, 189, 248, 0.2); color: var(--accent-blue); }
+    .badge-balr { background: rgba(34, 197, 94, 0.2); color: var(--accent-green); }
+    .badge-ba2  { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+    
+    .badge-tipo-fixo { background: rgba(56, 189, 248, 0.1); color: var(--accent-blue); }
+    .badge-tipo-interm { background: rgba(234, 179, 8, 0.15); color: var(--accent-yellow); }
+    .badge-status { background: rgba(34, 197, 94, 0.15); color: var(--accent-green); }
+  </style>
+</head>
+<body>
+
+  <aside>
+    <div class="brand">
+      <img src="https://enseg.com.br/wp-content/uploads/2024/10/LOGO-ENSEG-branco.png" alt="Logo ENSEG">
+      <div class="brand-title">SESCINC</div>
+      <div class="brand-sub">SBFZ — FORTALEZA</div>
+    </div>
+    <nav>
+      <button class="active">👥 Controle de Efetivo</button>
+    </nav>
+    <label class="btn-upload" for="file-upload">📁 Subir Planilha (.xlsx)</label>
+    <input type="file" id="file-upload" class="file-input" accept=".xlsx, .xls, .csv">
+  </aside>
+
+  <main>
+    <header>
+      <div>
+        <h2>Quadro Geral do Efetivo</h2>
+        <span style="font-size: 0.85rem; color: var(--text-dim);">Aeroporto Internacional de Fortaleza (SBFZ / FOR)</span>
+      </div>
+      <span style="font-size: 0.85rem; color: var(--text-dim);" id="data-status">Aguardando planilha...</span>
+    </header>
+
+    <!-- Indicadores -->
+    <div class="kpis">
+      <div class="card">
+        <div class="card-title">Efetivo Total</div>
+        <div class="card-val" id="kpi-total">0 <span>profissionais</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Efetivo Fixo</div>
+        <div class="card-val" id="kpi-fixo" style="color: var(--accent-blue);">0 <span>bombeiros</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Intermitentes</div>
+        <div class="card-val" id="kpi-interm" style="color: var(--accent-yellow);">0 <span>apoio</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Operacionais</div>
+        <div class="card-val" id="kpi-operacional" style="color: var(--accent-green);">0 <span>ativos</span></div>
+      </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="charts-grid">
+      <div class="chart-container">
+        <div class="chart-title">Distribuição por Função</div>
+        <canvas id="chartFuncoes"></canvas>
+      </div>
+      <div class="chart-container">
+        <div class="chart-title">Composição do Efetivo (Fixo vs Intermitente)</div>
+        <canvas id="chartTipo"></canvas>
+      </div>
+    </div>
+
+    <!-- Tabela e Filtros -->
+    <div class="card">
+      <div class="filter-bar">
+        <div class="filter-item">
+          <input type="text" id="search-input" class="search-box" placeholder="🔍 Buscar por nome..." style="min-width: 240px;">
+        </div>
+        <div class="filter-item">
+          <label>Função:</label>
+          <select id="filtro-funcao" class="select-filter">
+            <option value="TODAS">Todas as Funções</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>Tipo:</label>
+          <select id="filtro-tipo" class="select-filter">
+            <option value="TODOS">Todos os Tipos</option>
+            <option value="Efetivo Fixo">Efetivo Fixo</option>
+            <option value="Intermitente">Intermitente</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>Situação:</label>
+          <select id="filtro-situacao" class="select-filter">
+            <option value="TODAS">Todas as Situações</option>
+            <option value="Operacional">Operacional</option>
+            <option value="Disponível">Disponível</option>
+          </select>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Nome do Bombeiro</th>
+            <th>Função</th>
+            <th>Tipo</th>
+            <th>Situação</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr><td colspan="4" style="text-align:center; color: var(--text-dim);">Carregue uma planilha para listar o efetivo.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    let chartFuncoes, chartTipo;
+    let dadosCompletos = [];
+
+    function initCharts() {
+      // Gráfico de Funções (Barras Horizontais)
+      const ctxFn = document.getElementById('chartFuncoes').getContext('2d');
+      chartFuncoes = new Chart(ctxFn, {
+        type: 'bar',
+        data: {
+          labels: ['BA-2 / RE', 'BA-MC', 'BA-CE', 'BA-LR', 'BA-2'],
+          datasets: [{
+            label: 'Total',
+            data: [0, 0, 0, 0, 0],
+            backgroundColor: '#38bdf8',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8', stepSize: 5 } },
+            y: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+          }
+        }
+      });
+
+      // Gráfico Fixo vs Intermitente (Rosca)
+      const ctxTipo = document.getElementById('chartTipo').getContext('2d');
+      chartTipo = new Chart(ctxTipo, {
+        type: 'doughnut',
+        data: {
+          labels: ['Efetivo Fixo', 'Intermitente'],
+          datasets: [{
+            data: [0, 0],
+            backgroundColor: ['#38bdf8', '#eab308'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } }
+        }
+      });
+    }
+
+    // Leitor de Excel
+    document.getElementById('file-upload').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(firstSheet);
+        
+        dadosCompletos = rows.map(r => ({
+          nome: (r['Nome'] || r['NOME'] || '').trim(),
+          funcao: (r['Função'] || r['FUNÇÃO'] || r['Funcao'] || 'BA-2').trim(),
+          tipo: (r['Tipo'] || r['TIPO'] || 'Efetivo Fixo').trim(),
+          situacao: (r['Situação'] || r['SITUAÇÃO'] || r['Situacao'] || 'Operacional').trim()
+        }));
+
+        popularFiltrosDinamicos();
+        processarPainel();
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    function popularFiltrosDinamicos() {
+      const filtroFn = document.getElementById('filtro-funcao');
+      const funcoes = [...new Set(dadosCompletos.map(d => d.funcao))].sort();
+      filtroFn.innerHTML = '<option value="TODAS">Todas as Funções</option>';
+      funcoes.forEach(f => {
+        filtroFn.innerHTML += `<option value="${f}">${f}</option>`;
+      });
+    }
+
+    function processarPainel() {
+      let total = dadosCompletos.length;
+      let fixo = 0, interm = 0, operacional = 0;
+      const countFuncoes = {};
+
+      dadosCompletos.forEach(d => {
+        if (d.tipo.toLowerCase().includes('intermitente')) interm++;
+        else fixo++;
+
+        if (d.situacao.toLowerCase().includes('operacional')) operacional++;
+
+        countFuncoes[d.funcao] = (countFuncoes[d.funcao] || 0) + 1;
+      });
+
+      // Atualiza KPIs
+      document.getElementById('kpi-total').innerHTML = `${total} <span>profissionais</span>`;
+      document.getElementById('kpi-fixo').innerHTML = `${fixo} <span>bombeiros</span>`;
+      document.getElementById('kpi-interm').innerHTML = `${interm} <span>apoio</span>`;
+      document.getElementById('kpi-operacional').innerHTML = `${operacional} <span>ativos</span>`;
+      document.getElementById('data-status').innerText = `${total} profissionais carregados`;
+
+      // Atualiza Gráficos
+      chartFuncoes.data.labels = Object.keys(countFuncoes);
+      chartFuncoes.data.datasets[0].data = Object.values(countFuncoes);
+      chartFuncoes.update();
+
+      chartTipo.data.datasets[0].data = [fixo, interm];
+      chartTipo.update();
+
+      aplicarFiltros();
+    }
+
+    document.getElementById('search-input').addEventListener('input', aplicarFiltros);
+    document.getElementById('filtro-funcao').addEventListener('change', aplicarFiltros);
+    document.getElementById('filtro-tipo').addEventListener('change', aplicarFiltros);
+    document.getElementById('filtro-situacao').addEventListener('change', aplicarFiltros);
+
+    function aplicarFiltros() {
+      const termo = document.getElementById('search-input').value.toLowerCase();
+      const fn = document.getElementById('filtro-funcao').value;
+      const tp = document.getElementById('filtro-tipo').value;
+      const st = document.getElementById('filtro-situacao').value;
+
+      const filtrados = dadosCompletos.filter(d => {
+        const matchNome = d.nome.toLowerCase().includes(termo);
+        const matchFn = (fn === 'TODAS' || d.funcao === fn);
+        const matchTp = (tp === 'TODOS' || d.tipo === tp);
+        const matchSt = (st === 'TODAS' || d.situacao === st);
+        return matchNome && matchFn && matchTp && matchSt;
+      });
+
+      renderTabela(filtrados);
+    }
+
+    function renderTabela(registros) {
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = '';
+
+      if (registros.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-dim);">Nenhum registro encontrado.</td></tr>';
+        return;
+      }
+
+      registros.forEach(r => {
+        let badgeClass = 'badge-ba2';
+        if (r.funcao === 'BA-CE') badgeClass = 'badge-bace';
+        else if (r.funcao === 'BA-MC') badgeClass = 'badge-bamc';
+        else if (r.funcao === 'BA-LR') badgeClass = 'badge-balr';
+
+        const tipoBadge = r.tipo.toLowerCase().includes('intermitente') ? 'badge-tipo-interm' : 'badge-tipo-fixo';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${r.nome}</strong></td>
+          <td><span class="badge ${badgeClass}">${r.funcao}</span></td>
+          <td><span class="badge ${tipoBadge}">${r.tipo}</span></td>
+          <td><span class="badge badge-status">${r.situacao}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    initCharts();
+  </script>
+</body>
+</html>
